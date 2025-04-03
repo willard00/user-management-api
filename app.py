@@ -1,10 +1,14 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS  # Import CORS
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS
 
 users = []  # In-memory list for simplicity
+
+@app.route('/')
+def serve_frontend():
+    return send_from_directory('static', 'index.html')  # Ensure your HTML is in a "static" folder
 
 @app.route('/users', methods=['GET'])
 def get_users():
