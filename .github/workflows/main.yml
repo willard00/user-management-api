@@ -24,6 +24,11 @@ jobs:
         with:
           python-version: '3.10'
 
+      - name: Install Rust (for dependencies that require it)
+        run: |
+          sudo apt update
+          sudo apt install -y cargo
+
       - name: Create and start virtual environment
         run: |
           python -m venv venv
