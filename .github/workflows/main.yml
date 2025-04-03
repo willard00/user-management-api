@@ -1,7 +1,6 @@
 # Docs for the Azure Web Apps Deploy action: https://github.com/Azure/webapps-deploy
 # More GitHub Actions for Azure: https://github.com/Azure/actions
 # More info on Python, GitHub Actions, and Azure App Service: https://aka.ms/python-webapps-actions
-
 name: Build and deploy Python app to Azure Web App - user-management-api
 
 on:
@@ -24,10 +23,16 @@ jobs:
         with:
           python-version: '3.10'
 
-      - name: Install Rust (for dependencies that require it)
-        run: |
-          sudo apt update
-          sudo apt install -y cargo
+      - name: Install Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+          components: rustfmt, clippy
+
+      - name: Add Rust to PATH
+        run: echo "$HOME/.cargo/bin" >> $GITHUB_PATH
 
       - name: Create and start virtual environment
         run: |
@@ -35,9 +40,10 @@ jobs:
           source venv/bin/activate
 
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
 
-      # Optional: Run tests
       - name: Run Tests
         run: pytest test_app.py
 
@@ -56,7 +62,7 @@ jobs:
     environment:
       name: 'Production'
       url: ${{ steps.deploy-to-webapp.outputs.webapp-url }}
-
+    
     steps:
       - name: Download artifact from build job
         uses: actions/download-artifact@v4
@@ -65,15 +71,6 @@ jobs:
 
       - name: Unzip artifact for deployment
         run: unzip release.zip
-
-      # Disable remote build so Azure uses your prebuilt artifact
-      - name: Disable build during deployment
-        uses: azure/cli@v1
-        with:
-          inlineScript: |
-            az webapp config appsettings set --name user-management-api --resource-group YOUR_RESOURCE_GROUP --settings SCM_DO_BUILD_DURING_DEPLOYMENT=false
-        env:
-          AZURE_CREDENTIALS: ${{ secrets.AZURE_CREDENTIALS }}
 
       - name: 'Deploy to Azure Web App'
         uses: azure/webapps-deploy@v3
