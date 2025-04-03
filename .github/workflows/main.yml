@@ -23,32 +23,40 @@ jobs:
         with:
           python-version: '3.10'
 
-      - name: Install Rust
-        run: |
-          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
-
       - name: Create and start virtual environment
         run: |
           python -m venv venv
           source venv/bin/activate
 
-      - name: Install dependencies
+      - name: Install dependencies with binary-only
         run: |
           pip install --upgrade pip
-          pip install -r requirements.txt
+          # First try with binary-only installation
+          pip install --only-binary :all: -r requirements.txt || {
+            echo "Binary installation failed, creating wheels with build dependencies..."
+            sudo apt-get update
+            sudo apt-get install -y build-essential python3-dev
+            pip install wheel
+            pip wheel --no-deps -r requirements.txt -w wheelhouse/
+            pip install --no-index --find-links=wheelhouse/ -r requirements.txt
+          }
 
       - name: Run Tests
         run: pytest test_app.py
 
-      - name: Zip artifact for deployment (excluding venv and .git)
-        run: zip -r release.zip . -x "venv/*" ".git/*"
+      - name: Package wheelhouse for deployment
+        run: |
+          # Include the wheelhouse directory if it exists
+          [ -d wheelhouse ] && zip -r wheelhouse.zip wheelhouse/ || echo "No wheelhouse directory"
+          zip -r release.zip . -x "venv/*" ".git/*" "wheelhouse/*"
 
-      - name: Upload artifact for deployment jobs
+      - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: python-app
-          path: release.zip
+          path: |
+            release.zip
+            wheelhouse.zip
 
   deploy:
     runs-on: ubuntu-latest
@@ -58,13 +66,18 @@ jobs:
       url: ${{ steps.deploy-to-webapp.outputs.webapp-url }}
     
     steps:
-      - name: Download artifact from build job
+      - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
           name: python-app
+          path: .
 
-      - name: Unzip artifact for deployment
-        run: unzip release.zip
+      - name: Restore wheelhouse (if exists)
+        run: |
+          [ -f wheelhouse.zip ] && unzip -o wheelhouse.zip || echo "No wheelhouse found"
+
+      - name: Unzip main artifact
+        run: unzip -o release.zip
 
       - name: 'Deploy to Azure Web App'
         uses: azure/webapps-deploy@v3
