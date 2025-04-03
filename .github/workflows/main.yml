@@ -1,3 +1,7 @@
+# Docs for the Azure Web Apps Deploy action: https://github.com/Azure/webapps-deploy
+# More GitHub Actions for Azure: https://github.com/Azure/actions
+# More info on Python, GitHub Actions, and Azure App Service: https://aka.ms/python-webapps-actions
+
 name: Build and deploy Python app to Azure Web App - user-management-api
 
 on:
@@ -24,10 +28,14 @@ jobs:
         run: |
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
           echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+          echo 'export PATH="$HOME/.cargo/bin:$PATH"' >> ~/.bashrc
+          echo 'export PATH="$HOME/.cargo/bin:$PATH"' >> ~/.profile
           source "$HOME/.cargo/env"
       
       - name: Verify Rust installation
         run: |
+          source ~/.bashrc
+          source ~/.profile
           rustc --version
           cargo --version
 
@@ -40,6 +48,8 @@ jobs:
         run: pip install --upgrade pip
 
       - name: Install dependencies
+        env:
+          PATH: "$HOME/.cargo/bin:$PATH"
         run: pip install -r requirements.txt
 
       - name: Run Tests
