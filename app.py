@@ -26,7 +26,7 @@ def update_user(user_id):
     data = request.json
     for user in users:
         if user["id"] == user_id:
-            user["ne"] = data.get("name", user["name"])
+            user["name"] = data.get("name", user["name"])
             user["email"] = data.get("email", user["email"])
             return jsonify(user), 200
     return jsonify({"error": "User not found"}), 404
